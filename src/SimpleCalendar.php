@@ -1,336 +1,290 @@
 <?php
+declare(strict_types=1);
 
-namespace donatj;
+namespace MarcAndreAppel\SimpleCalendar;
+
+use Carbon\Carbon;
+use Carbon\Exceptions\InvalidFormatException;
+use InvalidArgumentException;
 
 /**
  * Simple Calendar
  *
+ * @author Marc-André Appel <marc-andre@appel.fun>
  * @author Jesse G. Donat <donatj@gmail.com>
- * @see http://donatstudios.com
+ * @see https://github.com/marcandreappel/simple-calendar
  * @license http://opensource.org/licenses/mit-license.php
  */
-class SimpleCalendar {
+class SimpleCalendar
+{
+    private array $weekdays;
+    private Carbon $month;
+    private ?Carbon $highlight = null;
+    private array $events = [];
+    private int $offset = 0;
+    private array $cssClasses = [
+        'calendar'     => 'simcal',
+        'leading_day'  => 'simcal-lead',
+        'trailing_day' => 'simcal-trail',
+        'highlight'    => 'simcal-highlight',
+        'event'        => 'simcal-event',
+        'events'       => 'simcal-events',
+    ];
 
-	/**
-	 * Array of Week Day Names
-	 *
-	 * @var string[]|null
-	 */
-	private $weekDayNames;
+    /**
+     * @param  Carbon|string|null  $month  Carbon parsable value for the month to show
+     * @param  bool|Carbon|string|null  $highlight  Set the day to mark as highlighted in the calendar
+     */
+    public function __construct(Carbon|null|string $month = null, bool|Carbon|null|string $highlight = null)
+    {
+        $this->setHighlight($highlight);
+        $this->setMonth($month);
+        $this->weekdays = Carbon::getDays();
+    }
 
-	/**
-	 * @var \DateTimeInterface
-	 */
-	private $now;
+    /**
+     * @param  Carbon|string|null  $month
+     *
+     * @return void
+     */
+    public function setMonth(Carbon|null|string $month = null): void
+    {
+        if ($month === null) {
+            $this->month = Carbon::now()->startOfMonth();
+        } else {
+            $this->month = ($month instanceof Carbon) ? $month->startOfMonth() : Carbon::parse($month)->startOfMonth();
+        }
+    }
 
-	/**
-	 * @var \DateTimeInterface|null
-	 */
-	private $today;
+    /**
+     * @param  bool|Carbon|string|null  $highlight If explicitly `false` then don't highlight any date
+     *
+     * @return void
+     */
+    public function setHighlight(bool|Carbon|null|string $highlight = null): void
+    {
+        if ($highlight === false) {
+            $this->highlight = null;
+        } elseif ($highlight === true || $highlight === null) {
+            $this->highlight = Carbon::now()->startOfDay();
+        } else {
+            $this->highlight = ($highlight instanceof Carbon) ? $highlight : Carbon::parse($highlight);
+        }
+    }
 
-	private $classes = [
-		'calendar'     => 'SimpleCalendar',
-		'leading_day'  => 'SCprefix',
-		'trailing_day' => 'SCsuffix',
-		'today'        => 'today',
-		'event'        => 'event',
-		'events'       => 'events',
-	];
+    /**
+     * Allows for custom CSS classes
+     *
+     * @param  array  $classes  Map of element to class names used by the calendar.
+     *
+     * @example
+     * ```php
+     * [
+     *    'calendar'     => 'simcal',
+     *    'leading_day'  => 'simcal-lead',
+     *    'trailing_day' => 'simcal-trail',
+     *    'highlight'        => 'simcal-highlight',
+     *    'event'        => 'simcal-event',
+     *    'events'       => 'simcal-events',
+     * ]
+     * ```
+     *
+     */
+    public function setCssClasses(array $classes): void
+    {
+        foreach ($classes as $key => $value) {
+            if (!array_key_exists($key, $this->cssClasses)) {
+                throw new InvalidArgumentException("class '{$key}' not supported");
+            }
 
-	private $dailyHtml = [];
-	private $offset = 0;
+            $this->cssClasses[$key] = $value;
+        }
+    }
 
-	/**
-	 * @param \DateTimeInterface|int|string|null       $calendarDate
-	 * @param \DateTimeInterface|false|int|string|null $today
-	 *
-	 * @see setDate
-	 * @see setToday
-	 */
-	public function __construct( $calendarDate = null, $today = null ) {
-		$this->setDate($calendarDate);
-		$this->setToday($today);
-	}
+    /**
+     * Overwrites the default names for the weekdays
+     *
+     * @param  array<string>  $weekdays
+     */
+    public function setWeekdays(array $weekdays = []): void
+    {
+        if (!empty($weekdays) && count($weekdays) !== 7) {
+            throw new InvalidArgumentException('Week day names array must have exactly 7 values');
+        }
 
-	/**
-	 * Sets the date for the calendar.
-	 *
-	 * @param \DateTimeInterface|int|string|null $date DateTimeInterface or Date string parsed by strtotime for the
-	 *     calendar date. If null set to current timestamp.
-	 */
-	public function setDate( $date = null ) {
-		$this->now = $this->parseDate($date) ?: new \DateTimeImmutable();
-	}
+        $this->weekdays = $weekdays ? array_values($weekdays) : Carbon::getDays();
+    }
 
-	/**
-	 * @param \DateTimeInterface|int|string|null $date
-	 * @return \DateTimeInterface|null
-	 */
-	private function parseDate( $date = null ) {
-		if( $date instanceof \DateTimeInterface ) {
-			return $date;
-		}
-		if( is_int($date) ) {
-			return (new \DateTimeImmutable())->setTimestamp($date);
-		}
-		if( is_string($date) ) {
-			return new \DateTimeImmutable($date);
-		}
+    /**
+     * Add an event to the calendar
+     *
+     * @param  string  $title  The raw HTML to place on the calendar for this event
+     * @param  Carbon|string  $startDate  Date string for when the event starts
+     * @param  Carbon|string|null  $endDate  Date string for when the event ends. Defaults to start date
+     */
+    public function addEvent(string $title, Carbon|string $startDate, Carbon|string|null $endDate = null): void
+    {
+        static $eventCount = 0;
 
-		return null;
-	}
+        if (!$startDate instanceof Carbon) {
+            $start = Carbon::parse($startDate);
+        }
+        if ($endDate === null) {
+            $end = $start;
+        } else {
+            $end = ($endDate instanceof Carbon) ? $endDate : Carbon::parse($endDate);
+        }
 
-	/**
-	 * Sets the class names used in the calendar
-	 *
-	 * ```php
-	 * [
-	 *    'calendar'     => 'SimpleCalendar',
-	 *    'leading_day'  => 'SCprefix',
-	 *    'trailing_day' => 'SCsuffix',
-	 *    'today'        => 'today',
-	 *    'event'        => 'event',
-	 *    'events'       => 'events',
-	 * ]
-	 * ```
-	 *
-	 * @param array $classes Map of element to class names used by the calendar.
-	 */
-	public function setCalendarClasses( array $classes ) {
-		foreach( $classes as $key => $value ) {
-			if( !isset($this->classes[$key]) ) {
-				throw new \InvalidArgumentException("class '{$key}' not supported");
-			}
+        if ($start->greaterThan($end)) {
+            throw new InvalidArgumentException('The end date must be greater than the start date.');
+        }
 
-			$this->classes[$key] = $value;
-		}
-	}
+        do {
+            $tDate = $start->clone();
 
-	/**
-	 * Sets "today"'s date. Defaults to today.
-	 *
-	 * @param \DateTimeInterface|false|string|null $today `null` will default to today, `false` will disable the
-	 *     rendering of Today.
-	 */
-	public function setToday( $today = null ) {
-		if( $today === false ) {
-			$this->today = null;
-		} elseif( $today === null ) {
-			$this->today = new \DateTimeImmutable();
-		} else {
-			$this->today = $this->parseDate($today);
-		}
-	}
+            $this->events[$tDate->year][$tDate->month][$tDate->day][$eventCount] = $title;
 
-	/**
-	 * @param string[]|null $weekDayNames
-	 */
-	public function setWeekDayNames( array $weekDayNames = null ) {
-		if( is_array($weekDayNames) && count($weekDayNames) !== 7 ) {
-			throw new \InvalidArgumentException('week array must have exactly 7 values');
-		}
+            $start->addDay();
+        } while ($start->lessThan($end));
 
-		$this->weekDayNames = $weekDayNames ? array_values($weekDayNames) : null;
-	}
+        $eventCount++;
+    }
 
-	/**
-	 * Add a daily event to the calendar
-	 *
-	 * @param string                             $html The raw HTML to place on the calendar for this event
-	 * @param \DateTimeInterface|int|string      $startDate Date string for when the event starts
-	 * @param \DateTimeInterface|int|string|null $endDate Date string for when the event ends. Defaults to start date
-	 */
-	public function addDailyHtml( $html, $startDate, $endDate = null ) {
-		static $htmlCount = 0;
+    /**
+     * Clear all daily events for the calendar
+     */
+    public function clearDailyHtml()
+    {
+        $this->events = [];
+    }
 
-		$start = $this->parseDate($startDate);
-		if( !$start ) {
-			throw new \InvalidArgumentException('invalid start time');
-		}
+    /**
+     * Sets the first day of the week
+     *
+     * @param  int|string  $offset  Day the week starts on
+     *
+     * @example "Monday", "mon" or 0-6, where 0 is Sunday.
+     */
+    public function setWeekOffset(int|string $offset): void
+    {
+        if (is_int($offset)) {
+            if ($offset < 0) {
+                throw new InvalidArgumentException('Week offset cannot be a negative number.');
+            }
+            $this->offset = $offset % 7;
+        } else {
+            try {
+                $this->offset = Carbon::parse($offset)->dayOfWeek;
+            } catch (InvalidFormatException) {
+                throw new InvalidArgumentException('Week offset must be Carbon compatible string.');
+            }
+        }
+    }
 
-		$end = $start;
-		if( $endDate ) {
-			$end = $this->parseDate($endDate);
-		}
-		if( !$end ) {
-			throw new \InvalidArgumentException('invalid end time');
-		}
+    /**
+     * Returns the generated Calendar
+     *
+     * @return string
+     */
+    public function render(): string
+    {
+        $month = $this->month;
 
-		if( $end->getTimestamp() < $start->getTimestamp() ) {
-			throw new \InvalidArgumentException('end must come after start');
-		}
+        $this->rotate();
 
-		$working = (new \DateTimeImmutable())->setTimestamp($start->getTimestamp());
-		do {
-			$tDate = getdate($working->getTimestamp());
+        $weekdayIndex = $this->weekdayIndex();
+        $daysInMonth  = $this->month->daysInMonth;
 
-			$this->dailyHtml[$tDate['year']][$tDate['mon']][$tDate['mday']][$htmlCount] = $html;
+        $html = <<<HTML
+<table class="{$this->cssClasses['calendar']}"><thead><tr>
+HTML;
 
-			$working = $working->add(new \DateInterval('P1D'));
-		} while( $working->getTimestamp() < $end->getTimestamp() + 1 );
+        foreach ($this->weekdays as $day) {
+            $html .= "<th>{$day}</th>";
+        }
 
-		$htmlCount++;
-	}
-
-	/**
-	 * Clear all daily events for the calendar
-	 */
-	public function clearDailyHtml() { $this->dailyHtml = []; }
-
-	/**
-	 * Sets the first day of the week
-	 *
-	 * @param int|string $offset Day the week starts on. ex: "Monday" or 0-6 where 0 is Sunday
-	 */
-	public function setStartOfWeek( $offset ) {
-		if( is_int($offset) ) {
-			$this->offset = $offset % 7;
-		} elseif( $this->weekDayNames !== null && ($weekOffset = array_search($offset, $this->weekDayNames, true)) !== false ) {
-			$this->offset = $weekOffset;
-		} else {
-			$weekTime = strtotime($offset);
-			if( $weekTime === 0 ) {
-				throw new \InvalidArgumentException('invalid offset');
-			}
-
-			$this->offset = date('N', $weekTime) % 7;
-		}
-	}
-
-	/**
-	 * Returns/Outputs the Calendar
-	 *
-	 * @param bool $echo Whether to echo resulting calendar
-	 * @return string HTML of the Calendar
-	 * @deprecated Use `render()` method instead.
-	 */
-	public function show( $echo = true ) {
-		$out = $this->render();
-		if( $echo ) {
-			echo $out;
-		}
-
-		return $out;
-	}
-
-	/**
-	 * Returns the generated Calendar
-	 *
-	 * @return string
-	 */
-	public function render() {
-		$now   = getdate($this->now->getTimestamp());
-		$today = [ 'mday' => -1, 'mon' => -1, 'year' => -1 ];
-		if( $this->today !== null ) {
-			$today = getdate($this->today->getTimestamp());
-		}
-
-		$daysOfWeek = $this->weekdays();
-		$this->rotate($daysOfWeek, $this->offset);
-
-		$weekDayIndex = date('N', mktime(0, 0, 1, $now['mon'], 1, $now['year'])) - $this->offset;
-		$daysInMonth  = cal_days_in_month(CAL_GREGORIAN, $now['mon'], $now['year']);
-
-		$out = <<<TAG
-<table cellpadding="0" cellspacing="0" class="{$this->classes['calendar']}"><thead><tr>
-TAG;
-
-		foreach( $daysOfWeek as $dayName ) {
-			$out .= "<th>{$dayName}</th>";
-		}
-
-		$out .= <<<'TAG'
+        $html .= <<<HTML
 </tr></thead>
 <tbody>
 <tr>
-TAG;
+HTML;
 
-		$weekDayIndex = ($weekDayIndex + 7) % 7;
+        $html .= str_repeat(<<<HTML
+<td class="{$this->cssClasses['leading_day']}">&nbsp;</td>
+HTML
+            , $weekdayIndex);
 
-		if( $weekDayIndex === 7 ) {
-			$weekDayIndex = 0;
-		} else {
-			$out .= str_repeat(<<<TAG
-<td class="{$this->classes['leading_day']}">&nbsp;</td>
-TAG
-				, $weekDayIndex);
-		}
 
-		$count = $weekDayIndex + 1;
-		for( $i = 1; $i <= $daysInMonth; $i++ ) {
-			$date = (new \DateTimeImmutable())->setDate($now['year'], $now['mon'], $i);
+        $count = $weekdayIndex + 1;
+        for ($i = 0; $i < $daysInMonth; $i++) {
+            $date = $this->month->clone()->addDays($i);
 
-			$isToday = false;
-			if( $this->today !== null ) {
-				$isToday = $i == $today['mday']
-					&& $today['mon'] == $date->format('n')
-					&& $today['year'] == $date->format('Y');
-			}
+            $setHighlight = $this->highlight !== null && $date->equalTo($this->highlight);
 
-			$out .= '<td' . ($isToday ? ' class="' . $this->classes['today'] . '"' : '') . '>';
+            $html .= '<td'.($setHighlight ? ' class="'.$this->cssClasses['highlight'].'"' : '').'>';
 
-			$out .= sprintf('<time datetime="%s">%d</time>', $date->format('Y-m-d'), $i);
+            $html .= sprintf('<time datetime="%s">%d</time>', $date->toDateString(), $date->day);
 
-			$dailyHTML = null;
-			if( isset($this->dailyHtml[$now['year']][$now['mon']][$i]) ) {
-				$dailyHTML = $this->dailyHtml[$now['year']][$now['mon']][$i];
-			}
+            $event = $this->events[$month->year][$month->month][$date->day] ?? null;
 
-			if( is_array($dailyHTML) ) {
-				$out .= '<div class="' . $this->classes['events'] . '">';
-				foreach( $dailyHTML as $dHtml ) {
-					$out .= sprintf('<div class="%s">%s</div>', $this->classes['event'], $dHtml);
-				}
-				$out .= '</div>';
-			}
+            if (is_array($event)) {
+                $html .= '<div class="'.$this->cssClasses['events'].'">';
+                foreach ($event as $dHtml) {
+                    $html .= sprintf('<div class="%s">%s</div>', $this->cssClasses['event'], $dHtml);
+                }
+                $html .= '</div>';
+            }
 
-			$out .= '</td>';
+            $html .= '</td>';
 
-			if( $count > 6 ) {
-				$out   .= "</tr>\n" . ($i < $daysInMonth ? '<tr>' : '');
-				$count = 0;
-			}
-			$count++;
-		}
+            if ($count > 6) {
+                $html  .= "</tr>\n".($i < $daysInMonth ? '<tr>' : '');
+                $count = 0;
+            }
+            $count++;
+        }
 
-		if( $count !== 1 ) {
-			$out .= str_repeat('<td class="' . $this->classes['trailing_day'] . '">&nbsp;</td>', 8 - $count) . '</tr>';
-		}
+        if ($count !== 1) {
+            $html .= str_repeat('<td class="'.$this->cssClasses['trailing_day'].'">&nbsp;</td>', 8 - $count).'</tr>';
+        }
 
-		$out .= "\n</tbody></table>\n";
+        $html .= "\n</tbody></table>\n";
 
-		return $out;
-	}
+        return $html;
+    }
 
-	/**
-	 * @param int $steps
-	 */
-	private function rotate( array &$data, $steps ) {
-		$count = count($data);
-		if( $steps < 0 ) {
-			$steps = $count + $steps;
-		}
-		$steps %= $count;
-		for( $i = 0; $i < $steps; $i++ ) {
-			$data[] = array_shift($data);
-		}
-	}
+    private function rotate(): void
+    {
+        $data  = &$this->weekdays;
+        $count = count($data);
 
-	/**
-	 * @return string[]
-	 */
-	private function weekdays() {
-		if( $this->weekDayNames !== null ) {
-			$wDays = $this->weekDayNames;
-		} else {
-			$today = (86400 * (date('N')));
-			$wDays = [];
-			for( $n = 0; $n < 7; $n++ ) {
-				$wDays[] = strftime('%a', time() - $today + ($n * 86400));
-			}
-		}
+        $this->offset %= $count;
+        for ($i = 0; $i < $this->offset; $i++) {
+            $data[] = array_shift($data);
+        }
+    }
 
-		return $wDays;
-	}
+    private function weekdayIndex(): int
+    {
+        $weekdayIndex = $this->month->startOfMonth()->dayOfWeek;
+        if ($this->offset !== Carbon::SUNDAY) {
+            if ($this->offset < $weekdayIndex) {
+                $weekdayIndex -= $this->offset;
+            } elseif ($this->offset > $weekdayIndex) {
+                $weekdayIndex += 7 - $this->offset;
+            } else {
+                $weekdayIndex = 0;
+            }
+        }
 
+        return $weekdayIndex;
+    }
+
+    /**
+     * @return string[]
+     */
+    public function getWeekdays(): array
+    {
+        return $this->weekdays;
+    }
 }
