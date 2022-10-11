@@ -30,6 +30,7 @@ class SimpleCalendarTest extends TestCase
      * @covers MarcAndreAppel\SimpleCalendar\SimpleCalendar::setHighlight()
      * @covers MarcAndreAppel\SimpleCalendar\SimpleCalendar::weekdayIndex()
      * @covers MarcAndreAppel\SimpleCalendar\SimpleCalendar::rotate()
+     * @covers MarcAndreAppel\SimpleCalendar\SimpleCalendar::getCustomAttributes()
      *
      * @covers MarcAndreAppel\SimpleCalendar\SimpleCalendar::render()
      */
@@ -51,6 +52,7 @@ class SimpleCalendarTest extends TestCase
      * @covers MarcAndreAppel\SimpleCalendar\SimpleCalendar::weekdayIndex()
      * @covers MarcAndreAppel\SimpleCalendar\SimpleCalendar::rotate()
      * @covers MarcAndreAppel\SimpleCalendar\SimpleCalendar::render()
+     * @covers MarcAndreAppel\SimpleCalendar\SimpleCalendar::getCustomAttributes()
      */
     public function adding_multiple_events_returns_correct_result(): void
     {
@@ -60,8 +62,8 @@ class SimpleCalendarTest extends TestCase
 
         $html = $simpleCalendar->render();
 
-        $this->assertTrue(str_contains($html, '<td><time datetime="2022-10-15">15</time><div class="simcal-events"><div class="simcal-event">Test Event #1</div></div></td>'));
-        $this->assertTrue(str_contains($html, '<td><time datetime="2022-10-30">30</time><div class="simcal-events"><div class="simcal-event">Test Event #2</div></div></td>'));
+        $this->assertTrue(str_contains($html, '<td data-simcal-id="2022-10-15" class=""><time datetime="2022-10-15">15</time><div class="simcal-events"><div class="simcal-event">Test Event #1</div></div></td>'));
+        $this->assertTrue(str_contains($html, '<td data-simcal-id="2022-10-30" class=""><time datetime="2022-10-30">30</time><div class="simcal-events"><div class="simcal-event">Test Event #2</div></div></td>'));
     }
 
     /**
@@ -94,6 +96,8 @@ class SimpleCalendarTest extends TestCase
      * @covers MarcAndreAppel\SimpleCalendar\SimpleCalendar::getWeekdays()
      * @covers MarcAndreAppel\SimpleCalendar\SimpleCalendar::setWeekOffset()
      * @covers MarcAndreAppel\SimpleCalendar\SimpleCalendar::rotate()
+     * @covers MarcAndreAppel\SimpleCalendar\SimpleCalendar::getCustomAttributes()
+     * @covers MarcAndreAppel\SimpleCalendar\SimpleCalendar::parseWeekday()
      *
      * @throws ReflectionException
      */
@@ -116,8 +120,9 @@ class SimpleCalendarTest extends TestCase
      * @covers MarcAndreAppel\SimpleCalendar\SimpleCalendar::setMonth()
      * @covers MarcAndreAppel\SimpleCalendar\SimpleCalendar::setHighlight()
      * @covers MarcAndreAppel\SimpleCalendar\SimpleCalendar::setWeekOffset()
-     *
+     * @covers MarcAndreAppel\SimpleCalendar\SimpleCalendar::getCustomAttributes()
      * @covers MarcAndreAppel\SimpleCalendar\SimpleCalendar::weekdayIndex()
+     * @covers MarcAndreAppel\SimpleCalendar\SimpleCalendar::parseWeekday()
      *
      * @throws ReflectionException
      */
@@ -154,6 +159,7 @@ class SimpleCalendarTest extends TestCase
      * @covers MarcAndreAppel\SimpleCalendar\SimpleCalendar::weekdayIndex()
      * @covers MarcAndreAppel\SimpleCalendar\SimpleCalendar::rotate()
      * @covers MarcAndreAppel\SimpleCalendar\SimpleCalendar::addEvent()
+     * @covers MarcAndreAppel\SimpleCalendar\SimpleCalendar::getCustomAttributes()
      */
     public function renders_all_css_classes(): void
     {
@@ -187,6 +193,7 @@ class SimpleCalendarTest extends TestCase
      * @covers MarcAndreAppel\SimpleCalendar\SimpleCalendar::setHighlight
      * @covers MarcAndreAppel\SimpleCalendar\SimpleCalendar::setMonth
      * @covers MarcAndreAppel\SimpleCalendar\SimpleCalendar::weekdayIndex
+     * @covers MarcAndreAppel\SimpleCalendar\SimpleCalendar::getCustomAttributes
      */
     public function renders_custom_css_classes(): void
     {
@@ -215,6 +222,7 @@ class SimpleCalendarTest extends TestCase
      * @covers MarcAndreAppel\SimpleCalendar\SimpleCalendar::__construct()
      * @covers MarcAndreAppel\SimpleCalendar\SimpleCalendar::setMonth()
      * @covers MarcAndreAppel\SimpleCalendar\SimpleCalendar::setHighlight()
+     * @covers MarcAndreAppel\SimpleCalendar\SimpleCalendar::parseWeekday()
      *
      * @covers MarcAndreAppel\SimpleCalendar\SimpleCalendar::setWeekOffset()
      */
@@ -232,6 +240,7 @@ class SimpleCalendarTest extends TestCase
      * @covers MarcAndreAppel\SimpleCalendar\SimpleCalendar::__construct()
      * @covers MarcAndreAppel\SimpleCalendar\SimpleCalendar::setMonth()
      * @covers MarcAndreAppel\SimpleCalendar\SimpleCalendar::setHighlight()
+     * @covers MarcAndreAppel\SimpleCalendar\SimpleCalendar::parseWeekday()
      *
      * @covers MarcAndreAppel\SimpleCalendar\SimpleCalendar::setWeekOffset()
      */
@@ -253,6 +262,7 @@ class SimpleCalendarTest extends TestCase
      * @covers MarcAndreAppel\SimpleCalendar\SimpleCalendar::setHighlight
      * @covers MarcAndreAppel\SimpleCalendar\SimpleCalendar::setMonth
      * @covers MarcAndreAppel\SimpleCalendar\SimpleCalendar::weekdayIndex
+     * @covers MarcAndreAppel\SimpleCalendar\SimpleCalendar::getCustomAttributes
      */
     public function opening_tags_and_closing_tags_match(): void
     {
@@ -274,6 +284,8 @@ class SimpleCalendarTest extends TestCase
      * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::setMonth
      * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::setWeekOffset
      * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::weekdayIndex
+     * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::getCustomAttributes
+     * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::parseWeekday
      */
     public function opening_tags_and_closing_tags_match_with_custom_attributes(): void
     {
@@ -296,6 +308,7 @@ class SimpleCalendarTest extends TestCase
      * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::setHighlight
      * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::setMonth
      * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::weekdayIndex
+     * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::getCustomAttributes
      */
     public function generic_render_result_matches(): void
     {
@@ -383,6 +396,8 @@ class SimpleCalendarTest extends TestCase
      * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::setMonth
      * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::setWeekOffset
      * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::weekdayIndex
+     * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::getCustomAttributes
+     * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::parseWeekday
      */
     public function custom_attributes_render_result_matches(): void
     {
@@ -451,11 +466,136 @@ class SimpleCalendarTest extends TestCase
     }
 
     /**
+     * @test
+     *
+     * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::render()
+     * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::__construct
+     * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::rotate
+     * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::setHighlight
+     * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::setMonth
+     * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::setWeekOffset
+     * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::weekdayIndex
+     *
+     * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::parseWeekday
+     * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::setExcludedDays
+     * @covers MarcAndreAppel\SimpleCalendar\SimpleCalendar::getCustomAttributes()
+     */
+    public function accepts_array_with_days_to_exclude(): void
+    {
+        $simpleCalendar = new SimpleCalendar(highlight: false);
+        $simpleCalendar->setExcludedDays([Carbon::SATURDAY, Carbon::SUNDAY]);
+
+        $html = $simpleCalendar->render();
+
+        $this->assertTrue(str_contains($html, '<td data-simcal-id="2022-10-02" class="simcal-disabled"><time datetime="2022-10-02">2</time></td>'));
+    }
+
+    /**
+     * @test
+     *
+     * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::render()
+     * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::__construct
+     * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::rotate
+     * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::setHighlight
+     * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::setMonth
+     * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::setWeekOffset
+     * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::weekdayIndex
+     * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::parseWeekday
+     * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::getCustomAttributes
+     *
+     * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::setCustomAttributes
+     */
+    public function accepts_array_with_custom_attributes_on_all_days(): void
+    {
+        $simpleCalendar = new SimpleCalendar();
+        $simpleCalendar->setCustomAttributes(['data-test' => 'value']);
+
+        $html = $simpleCalendar->render();
+
+        $this->assertTrue(str_contains($html, ' data-test="value"'));
+    }
+
+    /**
+     * @test
+     *
+     * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::render()
+     * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::__construct
+     * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::rotate
+     * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::setHighlight
+     * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::setMonth
+     * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::setWeekOffset
+     * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::weekdayIndex
+     * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::parseWeekday
+     * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::setExcludedDays
+     * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::getCustomAttributes
+     *
+     * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::setCustomAttributes
+     */
+    public function accepts_custom_attributes_on_active_days_only(): void
+    {
+        $simpleCalendar = new SimpleCalendar('October 2022');
+        $simpleCalendar->setExcludedDays([Carbon::SUNDAY]);
+        $simpleCalendar->setCustomAttributes(['data-test' => 'value'], true);
+
+        $html = $simpleCalendar->render();
+
+        $this->assertTrue(str_contains($html, 'data-simcal-id="2022-10-16" class="simcal-disabled"'));
+        $this->assertFalse(str_contains($html, 'data-simcal-id="2022-10-16" class="simcal-disabled" data-test="value"'));
+        $this->assertTrue(str_contains($html, 'data-simcal-id="2022-10-17" class="" data-test="value"'));
+    }
+
+    /**
+     * @test
+     *
+     * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::render()
+     * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::__construct
+     * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::rotate
+     * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::setHighlight
+     * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::setMonth
+     * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::setWeekOffset
+     * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::weekdayIndex
+     * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::parseWeekday
+     * @covers MarcAndreAppel\SimpleCalendar\SimpleCalendar::getCustomAttributes()
+     * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::setCustomAttributes
+     */
+    public function accepts_custom_attributes_with_placeholder_for_date(): void
+    {
+        $simpleCalendar = new SimpleCalendar('October 2022');
+        $simpleCalendar->setCustomAttributes(['data-test' => ':simcal_date:']);
+
+        $html = $simpleCalendar->render();
+
+        $this->assertTrue(str_contains($html, ' data-test="2022-10-15"'));
+    }
+
+    /**
+     * @test
+     *
+     * @covers MarcAndreAppel\SimpleCalendar\SimpleCalendar::__construct
+     * @covers MarcAndreAppel\SimpleCalendar\SimpleCalendar::render
+     * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::rotate
+     * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::setHighlight
+     * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::setMonth
+     * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::setWeekOffset
+     * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::weekdayIndex
+     * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::parseWeekday
+     *
+     * @covers  MarcAndreAppel\SimpleCalendar\SimpleCalendar::getCustomAttributes
+     */
+    public function allows_an_identifier_on_the_table(): void
+    {
+        $simpleCalendar = new SimpleCalendar();
+        $html = $simpleCalendar->render(id: 'calendar-1');
+
+        $this->assertTrue(str_contains($html, '<table id="calendar-1"'));
+    }
+
+    /**
      * @param  SimpleCalendar  $simpleCalendar
      *
      * @return array
      */
-    private function parseCalendarHtml(SimpleCalendar $simpleCalendar): array
+    protected function parseCalendarHtml(SimpleCalendar $simpleCalendar): array
     {
         $html = $simpleCalendar->render();
 

@@ -22,6 +22,9 @@ class SimpleCalendar
     private ?Carbon $highlight = null;
     private array $events = [];
     private int $offset = 0;
+
+    private array $excludedDays = [];
+
     private array $cssClasses = [
         'calendar'     => 'simcal',
         'leading_day'  => 'simcal-lead',
@@ -29,7 +32,11 @@ class SimpleCalendar
         'highlight'    => 'simcal-highlight',
         'event'        => 'simcal-event',
         'events'       => 'simcal-events',
+        'disabled'     => 'simcal-disabled',
     ];
+
+    private array $customAttributes = [];
+    private string $htmlTableId = '';
 
     /**
      * @param  Carbon|string|null  $month  Carbon parsable value for the month to show
@@ -57,7 +64,7 @@ class SimpleCalendar
     }
 
     /**
-     * @param  bool|Carbon|string|null  $highlight If explicitly `false` then don't highlight any date
+     * @param  bool|Carbon|string|null  $highlight  If explicitly `false` then don't highlight any date
      *
      * @return void
      */
@@ -86,6 +93,7 @@ class SimpleCalendar
      *    'highlight'        => 'simcal-highlight',
      *    'event'        => 'simcal-event',
      *    'events'       => 'simcal-events',
+     *    'disabled'       => 'simcal-disabled',
      * ]
      * ```
      *
@@ -167,27 +175,41 @@ class SimpleCalendar
      */
     public function setWeekOffset(int|string $offset): void
     {
-        if (is_int($offset)) {
-            if ($offset < 0) {
-                throw new InvalidArgumentException('Week offset cannot be a negative number.');
-            }
-            $this->offset = $offset % 7;
-        } else {
-            try {
-                $this->offset = Carbon::parse($offset)->dayOfWeek;
-            } catch (InvalidFormatException) {
-                throw new InvalidArgumentException('Week offset must be Carbon compatible string.');
-            }
+        $this->offset = $this->parseWeekday($offset);
+    }
+
+    /**
+     * Set weekdays to be marked as disabled when rendered
+     *
+     * @param  array  $weekdays
+     *
+     * @return void
+     */
+    public function setExcludedDays(array $weekdays): void
+    {
+        foreach ($weekdays as $day) {
+            $this->excludedDays[] = $this->parseWeekday($day);
         }
+    }
+
+    public function setCustomAttributes(array $attributes, bool $forActiveDays = false): void
+    {
+        $this->customAttributes             = array_merge($this->customAttributes, $attributes);
+        $this->customAttributesOnActiveDays = $forActiveDays;
     }
 
     /**
      * Returns the generated Calendar
      *
+     * @param  string  $id  HTML `id` attribute to add to the table
+     *
      * @return string
      */
-    public function render(): string
+    public function render(?string $id = null): string
     {
+        if ($id !== null) {
+            $this->htmlTableId = htmlentities(str_replace(' ', '-', strip_tags($id)), ENT_QUOTES);
+        }
         $month = $this->month;
 
         $this->rotate();
@@ -195,9 +217,7 @@ class SimpleCalendar
         $weekdayIndex = $this->weekdayIndex();
         $daysInMonth  = $this->month->daysInMonth;
 
-        $html = <<<HTML
-<table class="{$this->cssClasses['calendar']}"><thead><tr>
-HTML;
+        $html = sprintf('<table id="%s" class="%s"><thead><tr>', $this->htmlTableId, $this->cssClasses['calendar']);
 
         foreach ($this->weekdays as $day) {
             $html .= "<th>{$day}</th>";
@@ -214,19 +234,27 @@ HTML;
 HTML
             , $weekdayIndex);
 
+        $customAttributes = $this->getCustomAttributes();
 
         $count = $weekdayIndex + 1;
         for ($i = 0; $i < $daysInMonth; $i++) {
-            $date = $this->month->clone()->addDays($i);
+            $date  = $this->month->clone()->addDays($i);
+            $today = $date->toDateString();
 
-            $setHighlight = $this->highlight !== null && $date->equalTo($this->highlight);
+            $classList = [];
+            if ($this->highlight !== null && $date->equalTo($this->highlight)) {
+                $classList[] = $this->cssClasses['highlight'];
+            }
+            $isActiveDay = true;
+            if (in_array($date->dayOfWeek, $this->excludedDays, true)) {
+                $classList[] = $this->cssClasses['disabled'];
+                $isActiveDay = false;
+            }
 
-            $html .= '<td'.($setHighlight ? ' class="'.$this->cssClasses['highlight'].'"' : '').'>';
-
-            $html .= sprintf('<time datetime="%s">%d</time>', $date->toDateString(), $date->day);
+            $html .= '<td data-simcal-id="'.$today.'" class="'.implode(' ', $classList).'"'.($isActiveDay ? str_replace(':simcal_date:', $today, $customAttributes) : '').'>';
+            $html .= sprintf('<time datetime="%s">%d</time>', $today, $date->day);
 
             $event = $this->events[$month->year][$month->month][$date->day] ?? null;
-
             if (is_array($event)) {
                 $html .= '<div class="'.$this->cssClasses['events'].'">';
                 foreach ($event as $dHtml) {
@@ -251,6 +279,30 @@ HTML
         $html .= "\n</tbody></table>\n";
 
         return $html;
+    }
+
+    /**
+     * @param  int|string  $weekday
+     *
+     * @return int
+     *
+     * @throws InvalidArgumentException
+     */
+    protected function parseWeekday(int|string $weekday): int
+    {
+        if (is_int($weekday)) {
+            if ($weekday < 0) {
+                throw new InvalidArgumentException('Weekday cannot be a negative number.');
+            }
+
+            return $weekday % 7;
+        }
+
+        try {
+            return Carbon::parse($weekday)->dayOfWeek;
+        } catch (InvalidFormatException) {
+            throw new InvalidArgumentException('Weekday must be Carbon compatible string.');
+        }
     }
 
     private function rotate(): void
@@ -286,5 +338,27 @@ HTML
     public function getWeekdays(): array
     {
         return $this->weekdays;
+    }
+
+    /**
+     * @return string
+     */
+    public function getCustomAttributes(): string
+    {
+        $customAttributes = '';
+
+        if (count($this->customAttributes) > 0) {
+            $tempAttributes = [];
+            foreach ($this->customAttributes as $attribute => $value) {
+                $attributeString  = htmlentities(
+                        str_replace(' ', '-',
+                            strip_tags($attribute)
+                        ), ENT_QUOTES).'="'.htmlentities($value, ENT_QUOTES).'"';
+                $tempAttributes[] = $attributeString;
+            }
+            $customAttributes = ' '.implode(' ', $tempAttributes);
+        }
+
+        return $customAttributes;
     }
 }
